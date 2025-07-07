@@ -1,0 +1,46 @@
+{
+  "name": "vibe-lottery",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "dependencies": {
+    "@effect/platform": "0.87.3",
+    "@effect/platform-browser": "0.67.3",
+    "@tailwindcss/vite": "^4.1.11",
+    "@tanstack/react-query": "5.81.5",
+    "@tanstack/react-router": "1.124.0",
+    "@tanstack/react-start": "1.124.0",
+    "effect": "3.16.11",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.2",
+    "@tailwindcss/typography": "0.5.16",
+    "@types/node": "24.0.10",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "autoprefixer": "10.4.21",
+    "clsx": "2.1.1",
+    "tailwind-merge": "2.5.5",
+    "tailwindcss": "^4.1.11",
+    "typescript": "5.8.3",
+    "vite": "7.0.0",
+    "vite-tsconfig-paths": "5.1.4"
+  },
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.9.0"
+}
