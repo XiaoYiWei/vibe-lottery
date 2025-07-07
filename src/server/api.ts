@@ -6,16 +6,21 @@ import { Schema } from 'effect'
 
 // Server function for fetching data with optional delay
 export const fetchApiData = createServerFn({ method: 'GET' })
-  .validator(Schema.optional(Schema.Struct({
-    delay: Schema.optional(Schema.Number)
-  })).pipe(Schema.withDefault(() => ({}))))
+  .validator((data) => {
+    const defaultData = { delay: 1000 }
+    if (!data || typeof data !== 'object') {
+      return defaultData
+    }
+    return {
+      delay: typeof data.delay === 'number' ? data.delay : defaultData.delay
+    }
+  })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
       const api = yield* ApiService
       const result = yield* api.fetchData(data?.delay || 1000)
       return result
     }).pipe(
-      Effect.provide(ApiService.Default),
       Effect.match({
         onFailure: (error) => {
           if (error instanceof ApiError) {
@@ -58,7 +63,7 @@ export const processMessage = createServerFn({ method: 'POST' })
       throw new Error('Message is required')
     }
 
-    return Schema.decodeUnknownSync(Schema.String.pipe(Schema.minLength(1)))(message)
+    return message
   })
   .handler(async ({ data: message }) => {
     const program = Effect.gen(function* () {
@@ -66,7 +71,6 @@ export const processMessage = createServerFn({ method: 'POST' })
       const result = yield* api.processMessage(message)
       return result
     }).pipe(
-      Effect.provide(ApiService.Default),
       Effect.match({
         onFailure: (error) => {
           if (error instanceof ApiError) {
@@ -94,16 +98,18 @@ export const processMessage = createServerFn({ method: 'POST' })
 
 // Server function for fetching user data
 export const fetchUserData = createServerFn({ method: 'GET' })
-  .validator(Schema.Struct({
-    userId: Schema.String.pipe(Schema.minLength(1))
-  }))
+  .validator((data) => {
+    if (!data || typeof data !== 'object' || typeof data.userId !== 'string' || data.userId.trim().length === 0) {
+      throw new Error('userId is required and must be a non-empty string')
+    }
+    return { userId: data.userId.trim() }
+  })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
       const api = yield* ApiService
       const result = yield* api.fetchUserData(data.userId)
       return result
     }).pipe(
-      Effect.provide(ApiService.Default),
       Effect.match({
         onFailure: (error) => {
           if (error instanceof ApiError) {

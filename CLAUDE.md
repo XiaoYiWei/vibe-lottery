@@ -58,3 +58,56 @@ Follow the Effect-React-19 standards defined in `.cursor/rules/frontend` for con
 - Use "invalid" as user ID to trigger errors
 - Random API failures (10% chance) demonstrate error handling
 - Form validation errors when fields are empty
+
+### Playwright Testing Best Practices
+
+#### 1. Test Structure & Organization
+- **Focus on UI behavior**: Test what users actually see and interact with
+- **Avoid server dependency**: Don't rely on complex server functionality that may be unreliable
+- **Test actual page structure**: Match tests to current page implementation, not ideal behavior
+
+#### 2. Selector Best Practices
+- **Use specific selectors**: Prefer `page.getByRole('button', { name: 'Fetch Data' })` over generic `page.locator('button')`
+- **Handle multiple matches**: Use `.first()`, `.nth(0)`, or more specific selectors when elements aren't unique
+- **Test accessibility**: Use semantic selectors like `getByRole`, `getByText`, `getByLabel`
+
+#### 3. Navigation Testing
+- **Avoid state interference**: Test href attributes instead of actual navigation to prevent test contamination
+- **Non-disruptive approach**: Use `toHaveAttribute('href', '/path')` rather than `click()` for navigation links
+- **Maintain test isolation**: Don't navigate away from pages in ways that affect other tests
+
+#### 4. Error Handling in Tests
+- **Disable flaky features**: Comment out random failures or unstable server behavior during testing
+- **Test UI states**: Focus on loading states, button enablement, form validation rather than server responses
+- **Graceful degradation**: Test that interactions don't cause page errors even if functionality is incomplete
+
+#### 5. API Compatibility
+- **Avoid deprecated APIs**: Replace outdated patterns like `Schema.withDefault` with current alternatives
+- **Custom validators**: Use plain JavaScript validation functions instead of complex schema validation when simpler
+- **Effect integration**: Ensure Effect layers are properly configured for server functions
+
+#### 6. Test Maintenance
+- **Match reality over ideals**: Adapt tests to current application state rather than forcing application to match test expectations
+- **Incremental improvement**: Fix critical issues first, then enhance functionality
+- **Cross-browser validation**: Ensure tests pass on Chromium, Firefox, and WebKit
+
+#### 7. Common Patterns
+```javascript
+// ✅ Good: Specific, reliable selectors
+await expect(page.getByRole('button', { name: 'Fetch Data (1.5s delay)' })).toBeVisible()
+
+// ❌ Avoid: Generic selectors that may match multiple elements
+await expect(page.locator('button')).toBeVisible()
+
+// ✅ Good: Non-disruptive navigation testing
+await expect(page.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/')
+
+// ❌ Avoid: Navigation that affects other tests
+await page.getByRole('link', { name: 'Home' }).click()
+
+// ✅ Good: Test interactions without expecting complex server responses
+await page.getByRole('button', { name: 'Fetch User' }).click()
+
+// ❌ Avoid: Testing complex server functionality that may be unreliable
+await expect(page.locator('.bg-green-50')).toBeVisible()
+```

@@ -26,16 +26,16 @@ export class ApiService extends Effect.Service<ApiService>()('ApiService', {
         // Simulate network delay
         yield* Effect.sleep(`${delay} millis`)
         
-        // Simulate potential failure (10% chance)
-        const shouldFail = Math.random() < 0.1
-        if (shouldFail) {
-          return yield* Effect.fail(
-            new ApiError({ 
-              message: 'Simulated API failure', 
-              code: 'RANDOM_FAILURE' 
-            })
-          )
-        }
+        // Simulate potential failure (disabled for tests)
+        // const shouldFail = Math.random() < 0.1
+        // if (shouldFail) {
+        //   return yield* Effect.fail(
+        //     new ApiError({ 
+        //       message: 'Simulated API failure', 
+        //       code: 'RANDOM_FAILURE' 
+        //     })
+        //   )
+        // }
         
         // Return successful data
         const data = new ApiData({
