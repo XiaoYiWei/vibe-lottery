@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as FormDemoRouteImport } from './routes/form-demo'
+import { Route as AuthDemoRouteImport } from './routes/auth-demo'
 import { Route as AsyncDemoRouteImport } from './routes/async-demo'
 import { Route as IndexRouteImport } from './routes/index'
 
 const FormDemoRoute = FormDemoRouteImport.update({
   id: '/form-demo',
   path: '/form-demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDemoRoute = AuthDemoRouteImport.update({
+  id: '/auth-demo',
+  path: '/auth-demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AsyncDemoRoute = AsyncDemoRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/async-demo': typeof AsyncDemoRoute
+  '/auth-demo': typeof AuthDemoRoute
   '/form-demo': typeof FormDemoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/async-demo': typeof AsyncDemoRoute
+  '/auth-demo': typeof AuthDemoRoute
   '/form-demo': typeof FormDemoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/async-demo': typeof AsyncDemoRoute
+  '/auth-demo': typeof AuthDemoRoute
   '/form-demo': typeof FormDemoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/async-demo' | '/form-demo'
+  fullPaths: '/' | '/async-demo' | '/auth-demo' | '/form-demo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/async-demo' | '/form-demo'
-  id: '__root__' | '/' | '/async-demo' | '/form-demo'
+  to: '/' | '/async-demo' | '/auth-demo' | '/form-demo'
+  id: '__root__' | '/' | '/async-demo' | '/auth-demo' | '/form-demo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AsyncDemoRoute: typeof AsyncDemoRoute
+  AuthDemoRoute: typeof AuthDemoRoute
   FormDemoRoute: typeof FormDemoRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/form-demo'
       fullPath: '/form-demo'
       preLoaderRoute: typeof FormDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth-demo': {
+      id: '/auth-demo'
+      path: '/auth-demo'
+      fullPath: '/auth-demo'
+      preLoaderRoute: typeof AuthDemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/async-demo': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AsyncDemoRoute: AsyncDemoRoute,
+  AuthDemoRoute: AuthDemoRoute,
   FormDemoRoute: FormDemoRoute,
 }
 export const routeTree = rootRouteImport

@@ -61,6 +61,13 @@ function RootComponent() {
                   >
                     Form Demo
                   </Link>
+                  <Link 
+                    to="/auth-demo" 
+                    className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+                    activeProps={{ className: "text-blue-600 bg-blue-50" }}
+                  >
+                    Auth Demo
+                  </Link>
                 </div>
               </div>
             </div>
