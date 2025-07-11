@@ -1,13 +1,27 @@
 import { Effect, Schema } from 'effect'
 
-// Define the data schema for the API response
+// Define schemas with branded types following template patterns
 export class ApiData extends Schema.Class<ApiData>('ApiData')({
   message: Schema.String,
   timestamp: Schema.Number,
-  id: Schema.Number.pipe(Schema.brand('Id'))
+  id: Schema.Number
 }) {}
 
-// Define API error types
+export class ProcessedMessage extends Schema.Class<ProcessedMessage>('ProcessedMessage')({
+  original: Schema.String,
+  processed: Schema.String,
+  wordCount: Schema.Number,
+  timestamp: Schema.String
+}) {}
+
+export class UserData extends Schema.Class<UserData>('UserData')({
+  id: Schema.String,
+  name: Schema.String,
+  email: Schema.String,
+  lastLogin: Schema.String
+}) {}
+
+// Define error types using tagged errors
 export class ApiError extends Schema.TaggedError<ApiError>()('ApiError', {
   message: Schema.String,
   code: Schema.optional(Schema.String)
@@ -17,13 +31,23 @@ export class NetworkError extends Schema.TaggedError<NetworkError>()('NetworkErr
   message: Schema.String
 }) {}
 
-// Create the API service
-export class ApiService extends Effect.Service<ApiService>()('ApiService', {
-  effect: Effect.gen(function* () {
-    
-    const fetchData = (delay: number = 1000) => 
+export class ValidationError extends Schema.TaggedError<ValidationError>()('ValidationError', {
+  message: Schema.String,
+  field: Schema.optional(Schema.String)
+}) {}
+
+// Define the API service interface
+interface Api {
+  readonly fetchData: (delay?: number) => Effect.Effect<ApiData, ApiError>
+  readonly processMessage: (message: string) => Effect.Effect<ProcessedMessage, ValidationError | ApiError>
+  readonly fetchUserData: (userId: string) => Effect.Effect<UserData, ApiError>
+}
+
+// Create the API service following template patterns
+export const Api = Effect.Service<Api>()('Api', {
+  effect: Effect.succeed({
+    fetchData: (delay: number = 1000) =>
       Effect.gen(function* () {
-        // Simulate network delay
         yield* Effect.sleep(`${delay} millis`)
         
         // Simulate potential failure (disabled for tests)
@@ -37,49 +61,44 @@ export class ApiService extends Effect.Service<ApiService>()('ApiService', {
         //   )
         // }
         
-        // Return successful data
         const data = new ApiData({
           message: 'Hello from Effect API!',
           timestamp: Date.now(),
-          id: Math.floor(Math.random() * 1000) as Schema.Brand<number, 'Id'>
+          id: Math.floor(Math.random() * 1000)
         })
         
         yield* Effect.log(`API data fetched: ${data.message}`)
         return data
-      })
+      }),
 
-    const processMessage = (message: string) =>
+    processMessage: (message: string) =>
       Effect.gen(function* () {
-        // Validate input
         if (!message || message.trim().length === 0) {
           return yield* Effect.fail(
-            new ApiError({ 
-              message: 'Message cannot be empty', 
-              code: 'VALIDATION_ERROR' 
+            new ValidationError({ 
+              message: 'Message cannot be empty',
+              field: 'message'
             })
           )
         }
 
-        // Simulate processing delay
         yield* Effect.sleep('500 millis')
         
-        const processedData = {
+        const processedData = new ProcessedMessage({
           original: message,
           processed: message.toUpperCase(),
           wordCount: message.split(' ').length,
           timestamp: new Date().toISOString()
-        }
+        })
         
         yield* Effect.log(`Message processed: ${message}`)
         return processedData
-      })
+      }),
 
-    const fetchUserData = (userId: string) =>
+    fetchUserData: (userId: string) =>
       Effect.gen(function* () {
-        // Simulate database lookup delay
         yield* Effect.sleep('800 millis')
         
-        // Simulate user not found (if userId is 'invalid')
         if (userId === 'invalid') {
           return yield* Effect.fail(
             new ApiError({ 
@@ -89,21 +108,18 @@ export class ApiService extends Effect.Service<ApiService>()('ApiService', {
           )
         }
         
-        const userData = {
+        const userData = new UserData({
           id: userId,
           name: `User ${userId}`,
           email: `user${userId}@example.com`,
           lastLogin: new Date().toISOString()
-        }
+        })
         
         yield* Effect.log(`User data fetched for: ${userId}`)
         return userData
       })
-
-    return {
-      fetchData,
-      processMessage,
-      fetchUserData
-    } as const
   })
-}) {}
+})
+
+// Export for backward compatibility
+export const ApiService = Api

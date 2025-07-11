@@ -13,7 +13,7 @@ interface ApiResult {
   success: boolean
   data?: any
   error?: string
-  code?: string
+  code?: string | undefined
 }
 
 function AsyncDemoComponent() {
@@ -106,7 +106,7 @@ function AsyncDemoComponent() {
             <Button
               onClick={handleAsyncClick}
               disabled={isLoading}
-              variant={isLoading ? 'secondary' : 'primary'}
+              variant={isLoading ? 'secondary' : 'default'}
             >
               {isLoading ? 'Loading...' : 'Fetch Data (1.5s delay)'}
             </Button>
@@ -167,7 +167,7 @@ function AsyncDemoComponent() {
             <Button
               onClick={handleFetchUser}
               disabled={isUserLoading || !userId.trim()}
-              variant={isUserLoading ? 'secondary' : 'primary'}
+              variant={isUserLoading ? 'secondary' : 'default'}
             >
               {isUserLoading ? 'Loading...' : 'Fetch User'}
             </Button>

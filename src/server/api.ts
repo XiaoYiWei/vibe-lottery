@@ -1,47 +1,46 @@
 import { createServerFn } from '@tanstack/react-start'
 import { Effect } from 'effect'
 import { RuntimeServer } from '../services/RuntimeServer'
-import { ApiService, ApiError, NetworkError } from '../services/ApiService'
-import { Schema } from 'effect'
+import { Api, ApiError, NetworkError, ValidationError } from '../services/ApiService'
 
 // Server function for fetching data with optional delay
 export const fetchApiData = createServerFn({ method: 'GET' })
-  .validator((data) => {
+  .validator((data: any) => {
     const defaultData = { delay: 1000 }
     if (!data || typeof data !== 'object') {
       return defaultData
     }
     return {
-      delay: typeof data.delay === 'number' ? data.delay : defaultData.delay
+      delay: typeof (data as any).delay === 'number' ? (data as any).delay : defaultData.delay
     }
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
-      const api = yield* ApiService
+      const api = yield* Api
       const result = yield* api.fetchData(data?.delay || 1000)
       return result
     }).pipe(
       Effect.match({
         onFailure: (error) => {
-          if (error instanceof ApiError) {
+          if (error._tag === 'ApiError') {
             return { 
-              success: false, 
+              success: false as const, 
               error: error.message, 
               code: error.code 
             }
           }
           return { 
-            success: false, 
+            success: false as const, 
             error: 'Unknown error occurred',
             code: 'UNKNOWN_ERROR'
           }
         },
         onSuccess: (data) => ({ 
-          success: true, 
+          success: true as const, 
           data: {
             message: data.message,
             timestamp: data.timestamp,
-            id: data.id
+            id: Number(data.id)
           }
         })
       })
@@ -67,28 +66,41 @@ export const processMessage = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data: message }) => {
     const program = Effect.gen(function* () {
-      const api = yield* ApiService
+      const api = yield* Api
       const result = yield* api.processMessage(message)
       return result
     }).pipe(
       Effect.match({
         onFailure: (error) => {
-          if (error instanceof ApiError) {
+          if (error._tag === 'ValidationError') {
             return { 
-              success: false, 
+              success: false as const, 
+              error: error.message, 
+              code: 'VALIDATION_ERROR',
+              field: error.field
+            }
+          }
+          if (error._tag === 'ApiError') {
+            return { 
+              success: false as const, 
               error: error.message, 
               code: error.code 
             }
           }
           return { 
-            success: false, 
+            success: false as const, 
             error: 'Failed to process message',
             code: 'PROCESSING_ERROR'
           }
         },
         onSuccess: (data) => ({ 
-          success: true, 
-          data 
+          success: true as const, 
+          data: {
+            original: data.original,
+            processed: data.processed,
+            wordCount: data.wordCount,
+            timestamp: data.timestamp
+          }
         })
       })
     )
@@ -98,36 +110,41 @@ export const processMessage = createServerFn({ method: 'POST' })
 
 // Server function for fetching user data
 export const fetchUserData = createServerFn({ method: 'GET' })
-  .validator((data) => {
-    if (!data || typeof data !== 'object' || typeof data.userId !== 'string' || data.userId.trim().length === 0) {
+  .validator((data: any) => {
+    if (!data || typeof data !== 'object' || typeof (data as any).userId !== 'string' || (data as any).userId.trim().length === 0) {
       throw new Error('userId is required and must be a non-empty string')
     }
-    return { userId: data.userId.trim() }
+    return { userId: (data as any).userId.trim() }
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
-      const api = yield* ApiService
+      const api = yield* Api
       const result = yield* api.fetchUserData(data.userId)
       return result
     }).pipe(
       Effect.match({
         onFailure: (error) => {
-          if (error instanceof ApiError) {
+          if (error._tag === 'ApiError') {
             return { 
-              success: false, 
+              success: false as const, 
               error: error.message, 
               code: error.code 
             }
           }
           return { 
-            success: false, 
+            success: false as const, 
             error: 'Failed to fetch user data',
             code: 'USER_FETCH_ERROR'
           }
         },
         onSuccess: (data) => ({ 
-          success: true, 
-          data 
+          success: true as const, 
+          data: {
+            id: String(data.id),
+            name: data.name,
+            email: data.email,
+            lastLogin: data.lastLogin
+          }
         })
       })
     )

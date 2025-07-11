@@ -13,7 +13,8 @@ interface FormState {
   success?: boolean
   data?: any
   error?: string
-  code?: string
+  code?: string | undefined
+  field?: string | undefined
 }
 
 function FormDemoComponent() {
@@ -111,7 +112,7 @@ function FormDemoComponent() {
           <Button
             type="submit"
             disabled={isPending}
-            variant={isPending ? 'secondary' : 'primary'}
+            variant={isPending ? 'secondary' : 'default'}
           >
             {isPending ? 'Processing...' : 'Process Message'}
           </Button>
@@ -152,7 +153,7 @@ function FormDemoComponent() {
           <Button
             onClick={handleStreamEvents}
             disabled={isStreaming}
-            variant={isStreaming ? 'secondary' : 'primary'}
+            variant={isStreaming ? 'secondary' : 'default'}
           >
             {isStreaming ? 'Streaming...' : 'Start Event Stream'}
           </Button>
