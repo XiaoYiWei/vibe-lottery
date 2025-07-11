@@ -1,57 +1,101 @@
 # Vibe Lottery - Development Guide
 
-## Project Overview
-This is a TanStack Start project demonstrating Effect-TS integration with React 19 patterns. The project showcases functional programming with Effect services, server functions, and proper error handling.
+## **Tech Stack & Architecture**
 
-## Key Implementation Points
+### **Core Tech Stack**
+- **React 19** - Latest React with server components and server actions
+- **TanStack Start** - Full-stack React framework with SSR/SSG
+- **TanStack Router** - Type-safe file-based routing
+- **Effect-TS** - Functional programming library for composable effects
+- **TypeScript** - End-to-end type safety
+- **Tailwind CSS** - Utility-first CSS framework
+- **Vite** - Fast build tool and dev server
+- **Playwright** - End-to-end testing
 
-### 1. Effect Services Pattern
-- **ApiService**: Service class with branded types and error handling
-- **RuntimeServer/RuntimeClient**: Separate runtimes for server/client execution
-- **Service composition**: Using `Layer.mergeAll()` for dependency injection
+### **Design Patterns**
 
-### 2. Server Functions with Effect
-- **createServerFn**: TanStack Start server functions with Effect integration
-- **Zod validation**: Runtime validation with typed schemas
-- **Effect.match**: Declarative success/failure handling instead of try/catch
+#### **1. Effect Service Pattern**
+```typescript
+// Service-based architecture with dependency injection
+export const Api = Effect.Service<Api>()('Api', {
+  effect: Effect.succeed({
+    fetchData: (delay) => Effect.gen(/* implementation */),
+    processMessage: (message) => Effect.gen(/* implementation */)
+  })
+})
+```
 
-### 3. Component Patterns
-- **useServerFn**: Hook for binding server functions to React components
-- **useActionState**: React 19 server actions with form processing
-- **Loading states**: Proper async state management with loading indicators
+#### **2. Runtime Separation Pattern**
+```typescript
+// Separate runtimes for client/server execution
+export const RuntimeServer = ManagedRuntime.make(MainLayer)
+export const RuntimeClient = ManagedRuntime.make(MainLayer)
+```
 
-### 4. Error Handling Strategy
-- **Effect.match**: Replaces try/catch with declarative error handling
-- **Typed errors**: Custom error classes (ApiError, NetworkError)
-- **Error boundaries**: React boundaries for UI error handling
+#### **3. Schema-First Validation**
+```typescript
+// Type-safe data models with runtime validation
+export class ApiData extends Schema.Class<ApiData>('ApiData')({
+  message: Schema.String,
+  timestamp: Schema.Number,
+  id: Schema.Number
+}) {}
+```
 
-### 5. Best Practices Implemented
-- **Type safety**: End-to-end type safety from server to client
-- **Functional composition**: Effect.gen() for async operations
-- **Progressive enhancement**: Forms work without JavaScript
-- **Server-sent events**: Real-time streaming with ReadableStream
+#### **4. Tagged Error Handling**
+```typescript
+// Declarative error handling with tagged errors
+export class ApiError extends Schema.TaggedError<ApiError>()('ApiError', {
+  message: Schema.String,
+  code: Schema.optional(Schema.String)
+}) {}
+```
+
+#### **5. Server Functions with Effect**
+```typescript
+// TanStack Start server functions with Effect integration
+export const fetchApiData = createServerFn({ method: 'GET' })
+  .handler(async ({ data }) => {
+    const program = Effect.gen(function* () {
+      const api = yield* Api
+      const result = yield* api.fetchData(data?.delay || 1000)
+      return result
+    })
+    return RuntimeServer.runPromise(program)
+  })
+```
+
+### **Core Principles**
+1. **Functional Composition** - Effect.gen() for async operations, Layer composition, immutable transformations
+2. **Type Safety** - End-to-end TypeScript, schema validation, branded types
+3. **Error as Values** - No exceptions, tagged errors, declarative handling
+4. **Separation of Concerns** - Modular architecture with clear boundaries
+5. **Progressive Enhancement** - Server-first with client-side hydration
+6. **Composable Architecture** - Service layers, Effect pipelines, runtime configuration
 
 ## Project Structure
 ```
 src/
+├── actions/            # Server actions for forms
 ├── components/
-│   ├── ui/           # Reusable UI components
+│   ├── ui/            # Reusable UI components
 │   └── ErrorBoundary.tsx
 ├── routes/
-│   ├── __root.tsx      # Root layout with navigation
-│   ├── index.tsx       # Home page
-│   ├── async-demo.tsx  # Async operations demo
-│   └── form-demo.tsx   # Form processing demo
+│   ├── __root.tsx     # Root layout with navigation
+│   ├── index.tsx      # Home page
+│   ├── async-demo.tsx # Async operations demo
+│   └── form-demo.tsx  # Form processing demo
 ├── server/
-│   └── api.ts          # Server functions with Effect
+│   └── api.ts         # Server functions with Effect
 └── services/
-    ├── ApiService.ts   # Effect service definitions
+    ├── ApiService.ts  # Effect service definitions
+    ├── FormData.ts    # Form processing service
     ├── RuntimeServer.ts # Server runtime
     └── RuntimeClient.ts # Client runtime
 ```
 
 ## Development Standards
-Follow the Effect-React-19 standards defined in `.cursor/rules/frontend` for consistent code patterns and architecture.
+Follow the Effect-React-19 standards for consistent code patterns and architecture.
 
 ## Testing
 - Check browser console for Effect logging output
