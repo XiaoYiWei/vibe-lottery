@@ -65,6 +65,32 @@ export const fetchApiData = createServerFn({ method: 'GET' })
   })
 ```
 
+#### **6. Authentication Service Pattern**
+```typescript
+// Complete authentication service with Effect patterns
+export const AuthService = Effect.Service<AuthService>()('AuthService', {
+  effect: Effect.succeed({
+    authenticate: (credentials: LoginCredentials) =>
+      Effect.gen(function* () {
+        // JWT token generation with Effect logging
+        const token = yield* generateToken(credentials.username)
+        yield* Effect.log(`Authentication successful for user: ${credentials.username}`)
+        return new AuthToken({ token, expiresAt: Date.now() + 3600000, userId: credentials.username })
+      }),
+    
+    performSecuredAction: (token: string, actionType: string) =>
+      Effect.gen(function* () {
+        // Token validation with tagged error handling
+        const session = yield* Effect.mapError(
+          decodeToken(token),
+          (error) => new AuthorizationError({ message: error.message, code: error.code })
+        )
+        return new SecuredActionResult({ message: `Action "${actionType}" completed`, userId: session.userId })
+      })
+  })
+})
+```
+
 ### **Core Principles**
 1. **Functional Composition** - Effect.gen() for async operations, Layer composition, immutable transformations
 2. **Type Safety** - End-to-end TypeScript, schema validation, branded types
@@ -84,12 +110,15 @@ src/
 │   ├── __root.tsx     # Root layout with navigation
 │   ├── index.tsx      # Home page
 │   ├── async-demo.tsx # Async operations demo
-│   └── form-demo.tsx  # Form processing demo
+│   ├── form-demo.tsx  # Form processing demo
+│   └── auth-demo.tsx  # Authentication demo with Effect-TS
 ├── server/
-│   └── api.ts         # Server functions with Effect
+│   ├── api.ts         # Server functions with Effect
+│   └── auth.ts        # Authentication server functions
 └── services/
-    ├── ApiService.ts  # Effect service definitions
-    ├── FormData.ts    # Form processing service
+    ├── ApiService.ts    # Effect service definitions
+    ├── AuthService.ts   # Authentication service with Effect patterns
+    ├── FormData.ts      # Form processing service
     ├── RuntimeServer.ts # Server runtime
     └── RuntimeClient.ts # Client runtime
 ```
@@ -97,11 +126,29 @@ src/
 ## Development Standards
 Follow the Effect-React-19 standards for consistent code patterns and architecture.
 
-## Testing
+## Demo Pages & Testing
+
+### **Available Demo Pages**
+1. **Home (`/`)** - Project overview and navigation
+2. **Async Demo (`/async-demo`)** - Effect-TS async operations with server functions
+3. **Form Demo (`/form-demo`)** - Server actions, form processing, and streaming
+4. **Auth Demo (`/auth-demo`)** - Complete authentication flow with Effect patterns
+
+### **Authentication Demo Features**
+- **Login Flow**: Username "admin" + any password → JWT token
+- **Secured Actions**: Require valid authentication token
+- **Public Actions**: No authentication required
+- **Resilient Actions**: Demonstrate Effect.retry and Effect.timeout patterns
+- **Real-time State Management**: Authentication status with localStorage persistence
+- **Token Validation**: Automatic JWT validation with Effect error handling
+- **Complete Logout**: State cleanup and form re-enablement
+
+### **Testing Guidelines**
 - Check browser console for Effect logging output
-- Use "invalid" as user ID to trigger errors
-- Random API failures (10% chance) demonstrate error handling
+- Use "invalid" as user ID to trigger errors in async demo
+- Authentication demo: Use "admin" as username, any password accepted
 - Form validation errors when fields are empty
+- All server functions use Effect patterns with comprehensive error handling
 
 ### Playwright Testing Best Practices
 
@@ -155,3 +202,48 @@ await page.getByRole('button', { name: 'Fetch User' }).click()
 // ❌ Avoid: Testing complex server functionality that may be unreliable
 await expect(page.locator('.bg-green-50')).toBeVisible()
 ```
+
+#### 8. Playwright MCP Integration
+Always use Playwright MCP for interactive testing and validation:
+
+```javascript
+// ✅ Use Playwright MCP to validate authentication flow
+await mcp.browser_navigate('http://localhost:3000/auth-demo')
+await mcp.browser_type('Username field', 'admin')
+await mcp.browser_type('Password field', 'testpassword')
+await mcp.browser_click('Login button')
+// Validate authentication state changes in snapshot
+
+// ✅ Test all demo pages systematically
+const demoPages = ['/', '/async-demo', '/form-demo', '/auth-demo']
+for (const page of demoPages) {
+  await mcp.browser_navigate(`http://localhost:3000${page}`)
+  // Validate page structure and key elements
+}
+```
+
+### **Test Files Structure**
+```
+tests/
+├── async-demo.spec.ts    # Async operations testing
+├── auth-demo.spec.ts     # Authentication flow testing
+└── form-demo.spec.ts     # Form processing testing (future)
+```
+
+## **Effect-TS Integration Summary**
+
+### **Key Achievements**
+1. ✅ **Complete Authentication System** - JWT tokens, validation, state management
+2. ✅ **Effect Service Architecture** - Dependency injection, layer composition
+3. ✅ **Schema-First Development** - Runtime validation, type safety
+4. ✅ **Error as Values** - TaggedError classes, Effect.match patterns
+5. ✅ **Server Function Integration** - Effect.gen workflows, proper error handling
+6. ✅ **Resilience Patterns** - Effect.retry, Effect.timeout, Effect.schedule
+7. ✅ **Comprehensive Testing** - Playwright tests covering all functionality
+
+### **Demonstration Pages**
+- **Async Demo**: Basic Effect patterns, server functions, error handling
+- **Form Demo**: Server actions, streaming, form validation
+- **Auth Demo**: Complete authentication, secured actions, resilience patterns
+
+All patterns follow the Effect-React-19 template standards for consistency and best practices.
