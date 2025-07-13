@@ -9,24 +9,36 @@ import {
   TokenError 
 } from '../services/AuthService'
 
-// Login server function with full Effect integration
+// Simple validation schemas - working approach
+const LoginDataSchema = Schema.Struct({
+  username: Schema.String,
+  password: Schema.String
+})
+
+// Validation error for the validator
+class ValidationError extends Schema.TaggedError<ValidationError>()('ValidationError', {
+  message: Schema.String,
+  field: Schema.optional(Schema.String)
+}) {}
+
+// Login server function with idiomatic schema validation
 export const loginUser = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid login data')
+    try {
+      // Simple schema validation with trimming and basic checks
+      const validated = Schema.decodeUnknownSync(LoginDataSchema)(data)
+      
+      if (!validated.username || !validated.password) {
+        throw new Error('Username and password are required')
+      }
+      
+      return {
+        username: validated.username.trim(),
+        password: validated.password.trim()
+      }
+    } catch (error) {
+      throw new Error(`Login validation failed: ${error.message}`)
     }
-    
-    const { username, password } = data
-    
-    if (!username || typeof username !== 'string') {
-      throw new Error('Username is required')
-    }
-    
-    if (!password || typeof password !== 'string') {
-      throw new Error('Password is required')
-    }
-    
-    return { username: username.trim(), password: password.trim() }
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
@@ -73,24 +85,28 @@ export const loginUser = createServerFn({ method: 'POST' })
     return RuntimeServer.runPromise(program)
   })
 
+const SecuredActionSchema = Schema.Struct({
+  token: Schema.String,
+  actionType: Schema.String
+})
+
 // Secured action server function
 export const performSecuredAction = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid request data')
+    try {
+      const validated = Schema.decodeUnknownSync(SecuredActionSchema)(data)
+      
+      if (!validated.token || !validated.actionType) {
+        throw new Error('Token and action type are required')
+      }
+      
+      return {
+        token: validated.token.trim(),
+        actionType: validated.actionType.trim()
+      }
+    } catch (error) {
+      throw new Error(`Secured action validation failed: ${error.message}`)
     }
-    
-    const { token, actionType } = data
-    
-    if (!token || typeof token !== 'string') {
-      throw new Error('Authentication token is required')
-    }
-    
-    if (!actionType || typeof actionType !== 'string') {
-      throw new Error('Action type is required')
-    }
-    
-    return { token: token.trim(), actionType: actionType.trim() }
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
@@ -175,20 +191,26 @@ export const getPublicGreeting = createServerFn({ method: 'GET' })
     return RuntimeServer.runPromise(program)
   })
 
+const TokenValidationSchema = Schema.Struct({
+  token: Schema.String
+})
+
 // Token validation server function
 export const validateAuthToken = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid request data')
+    try {
+      const validated = Schema.decodeUnknownSync(TokenValidationSchema)(data)
+      
+      if (!validated.token) {
+        throw new Error('Token is required')
+      }
+      
+      return {
+        token: validated.token.trim()
+      }
+    } catch (error) {
+      throw new Error(`Token validation failed: ${error.message}`)
     }
-    
-    const { token } = data
-    
-    if (!token || typeof token !== 'string') {
-      throw new Error('Token is required')
-    }
-    
-    return { token: token.trim() }
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
@@ -230,14 +252,25 @@ export const validateAuthToken = createServerFn({ method: 'POST' })
     return RuntimeServer.runPromise(program)
   })
 
+const ResilientActionSchema = Schema.Struct({
+  token: Schema.optional(Schema.String),
+  shouldFail: Schema.optional(Schema.Boolean)
+})
+
 // Demo action that shows Effect retry and timeout patterns
 export const resilientAction = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    const { token, shouldFail } = data || {}
-    
-    return { 
-      token: token || '', 
-      shouldFail: Boolean(shouldFail) 
+    try {
+      // Accept undefined/null data gracefully for resilient action
+      const dataToValidate = data || {}
+      const validated = Schema.decodeUnknownSync(ResilientActionSchema)(dataToValidate)
+      
+      return {
+        token: validated.token || '',
+        shouldFail: Boolean(validated.shouldFail)
+      }
+    } catch (error) {
+      throw new Error(`Resilient action validation failed: ${error.message}`)
     }
   })
   .handler(async ({ data }) => {
