@@ -14,6 +14,7 @@
 
 ### **Development Principles**
 - Always make good use of tools in serena mcp
+- Always use Effect-TS for error management instead of try/catch statement
 
 ### **Design Patterns**
 
@@ -27,5 +28,3 @@ export const Api = Effect.Service<Api>()('Api', {
   })
 })
 ```
-
-[... rest of the existing content remains unchanged ...]

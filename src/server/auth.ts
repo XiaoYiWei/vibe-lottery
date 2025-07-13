@@ -21,24 +21,41 @@ class ValidationError extends Schema.TaggedError<ValidationError>()('ValidationE
   field: Schema.optional(Schema.String)
 }) {}
 
-// Login server function with idiomatic schema validation
+// Login server function with Effect-based validation
 export const loginUser = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    try {
-      // Simple schema validation with trimming and basic checks
-      const validated = Schema.decodeUnknownSync(LoginDataSchema)(data)
+    const validationProgram = Effect.gen(function* () {
+      // Schema validation with Effect error handling
+      const validated = yield* Schema.decodeUnknown(LoginDataSchema)(data).pipe(
+        Effect.mapError((error) => 
+          new ValidationError({ 
+            message: `Schema validation failed: ${error.message}`, 
+            field: 'loginData' 
+          })
+        )
+      )
       
+      // Business validation
       if (!validated.username || !validated.password) {
-        throw new Error('Username and password are required')
+        return yield* Effect.fail(
+          new ValidationError({ 
+            message: 'Username and password are required', 
+            field: 'credentials' 
+          })
+        )
       }
       
       return {
         username: validated.username.trim(),
         password: validated.password.trim()
       }
-    } catch (error) {
-      throw new Error(`Login validation failed: ${error.message}`)
-    }
+    }).pipe(
+      Effect.catchAll((error) => 
+        Effect.fail(new Error(`Login validation failed: ${error.message}`))
+      )
+    )
+    
+    return Effect.runSync(validationProgram)
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
@@ -93,20 +110,38 @@ const SecuredActionSchema = Schema.Struct({
 // Secured action server function
 export const performSecuredAction = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    try {
-      const validated = Schema.decodeUnknownSync(SecuredActionSchema)(data)
+    const validationProgram = Effect.gen(function* () {
+      // Schema validation with Effect error handling
+      const validated = yield* Schema.decodeUnknown(SecuredActionSchema)(data).pipe(
+        Effect.mapError((error) => 
+          new ValidationError({ 
+            message: `Schema validation failed: ${error.message}`, 
+            field: 'securedActionData' 
+          })
+        )
+      )
       
+      // Business validation
       if (!validated.token || !validated.actionType) {
-        throw new Error('Token and action type are required')
+        return yield* Effect.fail(
+          new ValidationError({ 
+            message: 'Token and action type are required', 
+            field: 'requiredFields' 
+          })
+        )
       }
       
       return {
         token: validated.token.trim(),
         actionType: validated.actionType.trim()
       }
-    } catch (error) {
-      throw new Error(`Secured action validation failed: ${error.message}`)
-    }
+    }).pipe(
+      Effect.catchAll((error) => 
+        Effect.fail(new Error(`Secured action validation failed: ${error.message}`))
+      )
+    )
+    
+    return Effect.runSync(validationProgram)
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
@@ -198,19 +233,37 @@ const TokenValidationSchema = Schema.Struct({
 // Token validation server function
 export const validateAuthToken = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    try {
-      const validated = Schema.decodeUnknownSync(TokenValidationSchema)(data)
+    const validationProgram = Effect.gen(function* () {
+      // Schema validation with Effect error handling
+      const validated = yield* Schema.decodeUnknown(TokenValidationSchema)(data).pipe(
+        Effect.mapError((error) => 
+          new ValidationError({ 
+            message: `Schema validation failed: ${error.message}`, 
+            field: 'tokenData' 
+          })
+        )
+      )
       
+      // Business validation
       if (!validated.token) {
-        throw new Error('Token is required')
+        return yield* Effect.fail(
+          new ValidationError({ 
+            message: 'Token is required', 
+            field: 'token' 
+          })
+        )
       }
       
       return {
         token: validated.token.trim()
       }
-    } catch (error) {
-      throw new Error(`Token validation failed: ${error.message}`)
-    }
+    }).pipe(
+      Effect.catchAll((error) => 
+        Effect.fail(new Error(`Token validation failed: ${error.message}`))
+      )
+    )
+    
+    return Effect.runSync(validationProgram)
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
@@ -260,18 +313,31 @@ const ResilientActionSchema = Schema.Struct({
 // Demo action that shows Effect retry and timeout patterns
 export const resilientAction = createServerFn({ method: 'POST' })
   .validator((data: any) => {
-    try {
+    const validationProgram = Effect.gen(function* () {
       // Accept undefined/null data gracefully for resilient action
       const dataToValidate = data || {}
-      const validated = Schema.decodeUnknownSync(ResilientActionSchema)(dataToValidate)
+      
+      // Schema validation with Effect error handling
+      const validated = yield* Schema.decodeUnknown(ResilientActionSchema)(dataToValidate).pipe(
+        Effect.mapError((error) => 
+          new ValidationError({ 
+            message: `Schema validation failed: ${error.message}`, 
+            field: 'resilientActionData' 
+          })
+        )
+      )
       
       return {
         token: validated.token || '',
         shouldFail: Boolean(validated.shouldFail)
       }
-    } catch (error) {
-      throw new Error(`Resilient action validation failed: ${error.message}`)
-    }
+    }).pipe(
+      Effect.catchAll((error) => 
+        Effect.fail(new Error(`Resilient action validation failed: ${error.message}`))
+      )
+    )
+    
+    return Effect.runSync(validationProgram)
   })
   .handler(async ({ data }) => {
     const program = Effect.gen(function* () {
