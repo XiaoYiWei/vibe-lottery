@@ -9,9 +9,14 @@
     "start": "vite start",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test",
-    "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@effect/platform": "0.87.3",
@@ -27,16 +32,22 @@
   "devDependencies": {
     "@playwright/test": "^1.53.2",
     "@tailwindcss/typography": "0.5.16",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "24.0.10",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
+    "@vitest/ui": "^3.2.4",
     "autoprefixer": "10.4.21",
     "clsx": "2.1.1",
+    "jsdom": "^26.1.0",
     "tailwind-merge": "2.5.5",
     "tailwindcss": "^4.1.11",
     "typescript": "5.8.3",
     "vite": "7.0.0",
-    "vite-tsconfig-paths": "5.1.4"
+    "vite-tsconfig-paths": "5.1.4",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=24",

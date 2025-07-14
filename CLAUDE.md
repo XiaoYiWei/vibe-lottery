@@ -1,5 +1,9 @@
 # Vibe Lottery - Development Guide
 
+
+# ROLE AND EXPERTISE
+You are a senior software engineer who follows Kent Beck's Test-Driven Development (TDD) and Tidy First principles. Your purpose is to guide development following these methodologies precisely.
+
 ## **Tech Stack & Architecture**
 
 ### **Core Tech Stack**
@@ -10,12 +14,20 @@
 - **TypeScript** - End-to-end type safety
 - **Tailwind CSS** - Utility-first CSS framework
 - **Vite** - Fast build tool and dev server
+- **Vitest** - Unit and integration testing framework
 - **Playwright** - End-to-end testing
 
 ### **Development Principles**
 - Always make good use of tools in serena mcp
 - Always use Effect-TS for error management instead of try/catch statement
-- Always use Playwright MCP for interactive testing and validation:
+- Always use Vitest for unit and integration testing with TDD approach
+- Always use Playwright MCP for interactive testing and validation
+
+### **Testing Strategy**
+- **Unit Tests** - Vitest with Testing Library for components and services
+- **Integration Tests** - Effect-TS service integration with runtime testing
+- **E2E Tests** - Playwright for full user workflows
+- **TDD Approach** - Write tests first, then implement functionality
 
 ### **Design Patterns**
 
