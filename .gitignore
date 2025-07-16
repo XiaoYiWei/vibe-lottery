@@ -227,3 +227,4 @@ generated/
 *.zip
 *.rar
 *.7z
+playwright-report/

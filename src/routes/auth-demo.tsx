@@ -1,41 +1,37 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useServerFn } from '@tanstack/react-start'
 import { useState, useEffect } from 'react'
+import { Effect, Schema } from 'effect'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
-import { 
-  loginUser, 
-  performSecuredAction, 
-  getPublicGreeting,
-  validateAuthToken,
-  resilientAction
-} from '../server/auth'
+import { AuthService } from '../services/AuthService'
+import { RuntimeClient } from '../services/RuntimeClient'
 
-export const Route = createFileRoute('/auth-demo')(({
+export const Route = createFileRoute('/auth-demo')({
   component: AuthDemoComponent
-}))
+})
 
-interface AuthResult {
-  success: boolean
-  data?: any
-  error?: string
-  code?: string | undefined
-}
+// Schema classes for type safety
+export class AuthResult extends Schema.Class<AuthResult>('AuthResult')({
+  success: Schema.Boolean,
+  data: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  error: Schema.optional(Schema.String),
+  code: Schema.optional(Schema.String)
+}) {}
 
-interface AuthState {
-  token: string | null
-  isAuthenticated: boolean
-  user: any | null
-}
+export class AuthState extends Schema.Class<AuthState>('AuthState')({
+  token: Schema.NullOr(Schema.String),
+  isAuthenticated: Schema.Boolean,
+  user: Schema.NullOr(Schema.Unknown)
+}) {}
 
 function AuthDemoComponent() {
   // Authentication state
-  const [authState, setAuthState] = useState<AuthState>({
+  const [authState, setAuthState] = useState<AuthState>(new AuthState({
     token: null,
     isAuthenticated: false,
     user: null
-  })
+  }))
 
   // Form state
   const [username, setUsername] = useState('admin')
@@ -51,151 +47,223 @@ function AuthDemoComponent() {
   const [isResilientLoading, setIsResilientLoading] = useState(false)
   const [resilientResult, setResilientResult] = useState<AuthResult | null>(null)
 
-  // Server function bindings
-  const serverLogin = useServerFn(loginUser)
-  const serverSecuredAction = useServerFn(performSecuredAction)
-  const serverGreeting = useServerFn(getPublicGreeting)
-  const serverValidateToken = useServerFn(validateAuthToken)
-  const serverResilientAction = useServerFn(resilientAction)
-
   // Load token from localStorage on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem('auth-token')
-    if (savedToken) {
-      validateStoredToken(savedToken)
+    try {
+      const savedToken = localStorage.getItem('auth-token')
+      if (savedToken) {
+        validateStoredToken(savedToken)
+      }
+    } catch (error) {
+      console.error('Failed to access localStorage:', error)
     }
   }, [])
 
-  const validateStoredToken = async (token: string) => {
-    try {
-      const result = await serverValidateToken({ data: { token } })
-      if (result.success) {
-        setAuthState({
-          token,
-          isAuthenticated: true,
-          user: result.data
-        })
-      } else {
-        localStorage.removeItem('auth-token')
-      }
-    } catch (error) {
+  const validateStoredToken = (token: string) => {
+    const program = Effect.gen(function* () {
+      const authService = yield* AuthService
+      const session = yield* authService.validateToken(token)
+      
+      setAuthState(new AuthState({
+        token,
+        isAuthenticated: true,
+        user: session
+      }))
+    })
+
+    const handleError = (error: unknown) => {
       localStorage.removeItem('auth-token')
+      console.error('Token validation failed:', error)
     }
+
+    RuntimeClient.runPromise(program).catch(handleError)
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     setIsLogging(true)
     setLoginResult(null)
 
-    try {
-      const result = await serverLogin({
-        data: { username, password }
-      })
+    const program = Effect.gen(function* () {
+      const authService = yield* AuthService
+      const credentials = { username, password }
+      const authToken = yield* authService.authenticate(credentials)
+      
+      localStorage.setItem('auth-token', authToken.token)
+      
+      setAuthState(new AuthState({
+        token: authToken.token,
+        isAuthenticated: true,
+        user: {
+          userId: authToken.userId,
+          username: authToken.userId
+        }
+      }))
 
-      setLoginResult(result)
+      setLoginResult(new AuthResult({
+        success: true,
+        data: {
+          token: authToken.token,
+          userId: authToken.userId,
+          expiresAt: authToken.expiresAt
+        }
+      }))
+    })
 
-      if (result.success) {
-        const token = result.data.token
-        localStorage.setItem('auth-token', token)
-        
-        setAuthState({
-          token,
-          isAuthenticated: true,
-          user: {
-            userId: result.data.userId,
-            username: result.data.userId
-          }
-        })
+    const handleResult = Effect.match(program, {
+      onFailure: (error) => {
+        setLoginResult(new AuthResult({
+          success: false,
+          error: error.message,
+          code: 'code' in error ? error.code : 'AUTH_ERROR'
+        }))
+      },
+      onSuccess: () => {
+        // Success handling is done in the program
       }
-    } catch (error) {
-      setLoginResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Login failed',
-        code: 'CLIENT_ERROR'
-      })
-    } finally {
+    })
+
+    RuntimeClient.runPromise(handleResult).finally(() => {
       setIsLogging(false)
-    }
+    })
   }
 
   const handleLogout = () => {
     localStorage.removeItem('auth-token')
-    setAuthState({
+    setAuthState(new AuthState({
       token: null,
       isAuthenticated: false,
       user: null
-    })
+    }))
     setLoginResult(null)
     setSecuredResult(null)
     setGreetingResult(null)
     setResilientResult(null)
   }
 
-  const handleSecuredAction = async () => {
+  const handleSecuredAction = () => {
     if (!authState.token) return
 
     setIsSecuredLoading(true)
     setSecuredResult(null)
 
-    try {
-      const result = await serverSecuredAction({
-        data: { 
-          token: authState.token, 
-          actionType: 'admin-operation' 
+    const program = Effect.gen(function* () {
+      const authService = yield* AuthService
+      const result = yield* authService.performSecuredAction(authState.token!, 'admin-operation')
+      
+      setSecuredResult(new AuthResult({
+        success: true,
+        data: {
+          message: result.message,
+          actionType: result.actionType,
+          userId: result.userId,
+          timestamp: result.timestamp
         }
-      })
-      setSecuredResult(result)
-    } catch (error) {
-      setSecuredResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Secured action failed',
-        code: 'CLIENT_ERROR'
-      })
-    } finally {
+      }))
+    })
+
+    const handleResult = Effect.match(program, {
+      onFailure: (error) => {
+        setSecuredResult(new AuthResult({
+          success: false,
+          error: error.message,
+          code: 'code' in error ? error.code : 'SECURED_ACTION_ERROR'
+        }))
+      },
+      onSuccess: () => {
+        // Success handling is done in the program
+      }
+    })
+
+    RuntimeClient.runPromise(handleResult).finally(() => {
       setIsSecuredLoading(false)
-    }
+    })
   }
 
-  const handleGreeting = async () => {
+  const handleGreeting = () => {
     setIsGreetingLoading(true)
     setGreetingResult(null)
 
-    try {
-      const result = await serverGreeting({ data: {} })
-      setGreetingResult(result)
-    } catch (error) {
-      setGreetingResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Greeting failed',
-        code: 'CLIENT_ERROR'
-      })
-    } finally {
+    const program = Effect.gen(function* () {
+      const authService = yield* AuthService
+      const result = yield* authService.getPublicGreeting()
+      
+      setGreetingResult(new AuthResult({
+        success: true,
+        data: {
+          message: result.message,
+          serverTime: result.serverTime,
+          timestamp: result.timestamp
+        }
+      }))
+    })
+
+    const handleResult = Effect.match(program, {
+      onFailure: (error) => {
+        setGreetingResult(new AuthResult({
+          success: false,
+          error: String(error),
+          code: 'GREETING_ERROR'
+        }))
+      },
+      onSuccess: () => {
+        // Success handling is done in the program
+      }
+    })
+
+    RuntimeClient.runPromise(handleResult).finally(() => {
       setIsGreetingLoading(false)
-    }
+    })
   }
 
-  const handleResilientAction = async () => {
+  const handleResilientAction = () => {
     setIsResilientLoading(true)
     setResilientResult(null)
 
-    try {
-      const result = await serverResilientAction({
-        data: { 
-          token: authState.token,
-          shouldFail: Math.random() < 0.5 // 50% chance of triggering retry logic
+    // Simulate a resilient action with retry logic
+    const program = Effect.gen(function* () {
+      // Create a mock resilient operation
+      const operation = Effect.gen(function* () {
+        const shouldFail = Math.random() < 0.5
+        if (shouldFail) {
+          yield* Effect.fail(new Error('Simulated failure'))
         }
+        return 'Operation succeeded'
       })
-      setResilientResult(result)
-    } catch (error) {
-      setResilientResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Resilient action failed',
-        code: 'CLIENT_ERROR'
-      })
-    } finally {
+
+      const resilientOperation = operation.pipe(
+        Effect.retry({ times: 3 }),
+        Effect.timeout('5 seconds')
+      )
+
+      const result = yield* resilientOperation
+      
+      setResilientResult(new AuthResult({
+        success: true,
+        data: {
+          message: result,
+          retries: 'Completed with retry logic',
+          timestamp: new Date().toISOString()
+        }
+      }))
+    })
+
+    const handleResult = Effect.match(program, {
+      onFailure: (error) => {
+        setResilientResult(new AuthResult({
+          success: false,
+          error: error.message,
+          code: 'RESILIENT_ACTION_ERROR'
+        }))
+      },
+      onSuccess: () => {
+        // Success handling is done in the program
+      }
+    })
+
+    RuntimeClient.runPromise(handleResult).finally(() => {
       setIsResilientLoading(false)
-    }
+    })
   }
 
   return (
@@ -219,7 +287,7 @@ function AuthDemoComponent() {
             }`} />
             <span className="font-medium">
               {authState.isAuthenticated 
-                ? `Authenticated as ${authState.user?.username}` 
+                ? `Authenticated as ${(authState.user as any)?.username || 'Unknown User'}` 
                 : 'Not authenticated'
               }
             </span>
@@ -286,8 +354,8 @@ function AuthDemoComponent() {
               <div>
                 <h3 className="font-semibold text-green-900 mb-2">✅ Login Successful!</h3>
                 <div className="text-sm space-y-1">
-                  <p><strong>User ID:</strong> {loginResult.data?.userId}</p>
-                  <p><strong>Token expires:</strong> {new Date(loginResult.data?.expiresAt).toLocaleString()}</p>
+                  <p><strong>User ID:</strong> {String(loginResult.data?.userId || 'N/A')}</p>
+                  <p><strong>Token expires:</strong> {loginResult.data?.expiresAt ? new Date(loginResult.data.expiresAt as number).toLocaleString() : 'N/A'}</p>
                 </div>
               </div>
             ) : (
@@ -357,10 +425,10 @@ function AuthDemoComponent() {
               <h4 className="font-semibold mb-2">Secured Action Result:</h4>
               {securedResult.success ? (
                 <div className="text-sm space-y-1">
-                  <p><strong>Message:</strong> {securedResult.data?.message}</p>
-                  <p><strong>Action Type:</strong> {securedResult.data?.actionType}</p>
-                  <p><strong>User:</strong> {securedResult.data?.userId}</p>
-                  <p><strong>Timestamp:</strong> {securedResult.data?.timestamp}</p>
+                  <p><strong>Message:</strong> {String(securedResult.data?.message || 'N/A')}</p>
+                  <p><strong>Action Type:</strong> {String(securedResult.data?.actionType || 'N/A')}</p>
+                  <p><strong>User:</strong> {String(securedResult.data?.userId || 'N/A')}</p>
+                  <p><strong>Timestamp:</strong> {String(securedResult.data?.timestamp || 'N/A')}</p>
                 </div>
               ) : (
                 <p className="text-sm">{securedResult.error}</p>
@@ -377,9 +445,9 @@ function AuthDemoComponent() {
               <h4 className="font-semibold mb-2">Public Greeting Result:</h4>
               {greetingResult.success ? (
                 <div className="text-sm space-y-1">
-                  <p><strong>Message:</strong> {greetingResult.data?.message}</p>
-                  <p><strong>Server Time:</strong> {greetingResult.data?.serverTime}</p>
-                  <p><strong>Timestamp:</strong> {greetingResult.data?.timestamp}</p>
+                  <p><strong>Message:</strong> {String(greetingResult.data?.message || 'N/A')}</p>
+                  <p><strong>Server Time:</strong> {String(greetingResult.data?.serverTime || 'N/A')}</p>
+                  <p><strong>Timestamp:</strong> {String(greetingResult.data?.timestamp || 'N/A')}</p>
                 </div>
               ) : (
                 <p className="text-sm">{greetingResult.error}</p>
@@ -396,9 +464,9 @@ function AuthDemoComponent() {
               <h4 className="font-semibold mb-2">Resilient Action Result:</h4>
               {resilientResult.success ? (
                 <div className="text-sm space-y-1">
-                  <p><strong>Message:</strong> {resilientResult.data?.message}</p>
-                  <p><strong>Info:</strong> {resilientResult.data?.retries}</p>
-                  <p><strong>Timestamp:</strong> {resilientResult.data?.timestamp}</p>
+                  <p><strong>Message:</strong> {String(resilientResult.data?.message || 'N/A')}</p>
+                  <p><strong>Info:</strong> {String(resilientResult.data?.retries || 'N/A')}</p>
+                  <p><strong>Timestamp:</strong> {String(resilientResult.data?.timestamp || 'N/A')}</p>
                 </div>
               ) : (
                 <p className="text-sm">

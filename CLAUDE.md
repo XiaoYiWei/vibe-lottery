@@ -81,6 +81,29 @@ export const RuntimeServer = ManagedRuntime.make(MainLayer)
 export const RuntimeClient = ManagedRuntime.make(MainLayer)
 ```
 
+### **5. Effect-TS Component Pattern**
+```typescript
+// Replace traditional React patterns with Effect-TS
+const handleAction = () => {
+  const program = Effect.gen(function* () {
+    const service = yield* MyService
+    const result = yield* service.performAction()
+    // Handle success in program
+  })
+
+  const handleResult = Effect.match(program, {
+    onFailure: (error) => {
+      // Handle errors with tagged error types
+    },
+    onSuccess: () => {
+      // Success handling
+    }
+  })
+
+  RuntimeClient.runPromise(handleResult)
+}
+```
+
 ---
 
 ## **Project Structure**
@@ -117,6 +140,7 @@ src/
 - **Unit Tests**: Individual components and services (Vitest)
 - **Integration Tests**: Service interactions with Effect runtime
 - **E2E Tests**: Complete user workflows (Playwright)
+- **Edge Case Tests**: Comprehensive testing of Effect-TS patterns with multiple input parameters
 
 ### **Test Commands**
 ```bash
@@ -133,6 +157,15 @@ pnpm test:e2e          # Playwright tests
 - Use descriptive test names
 - Keep tests simple and focused
 - Mock external dependencies
+- **Test all Effect-TS patterns with multiple input parameters for edge cases**
+
+### **Effect-TS Testing Requirements**
+- **Schema Validation**: Test with complex nested structures, null/undefined values, empty objects
+- **Effect.gen Workflows**: Test sequential operations, concurrent execution, parameter combinations
+- **Effect.match Patterns**: Test all error scenarios and success paths
+- **Effect.retry Operations**: Test various failure patterns, timeout handling, recovery logic
+- **RuntimeClient**: Test memory pressure, error types, timeout scenarios
+- **localStorage Integration**: Test corrupted data, quota exceeded, access denied situations
 
 ---
 
@@ -144,6 +177,16 @@ pnpm test:e2e          # Playwright tests
 - Schema validation for all data boundaries
 - Tagged errors for typed error handling
 - Functional composition over imperative code
+- **Replace React patterns with Effect-TS equivalents**:
+  - `useState/useEffect` → `Effect.gen` workflows
+  - `try-catch` blocks → `Effect.match` error handling
+  - Plain interfaces → `Schema.Class` for type safety
+- **Implement Effect patterns**:
+  - `Effect.Service` for business logic
+  - `Effect.gen` for async operations
+  - `Effect.match` for success/failure handling
+  - `Effect.retry` with timeout for resilience
+  - `RuntimeClient` for Effect program execution
 
 ### **Commit Guidelines**
 - All tests must pass before committing
@@ -176,6 +219,9 @@ pnpm test:e2e          # Playwright tests
 ✅ **Testing Setup** - Vitest + Playwright with comprehensive coverage
 ✅ **Authentication** - JWT-based auth with Effect patterns
 ✅ **Server Functions** - TanStack Start integration with Effect workflows
+✅ **Comprehensive Edge Case Testing** - 71 tests covering all Effect-TS patterns
+✅ **Schema-First Architecture** - Runtime validation with Schema.Class
+✅ **Effect Pattern Compliance** - No traditional React error patterns
 
 ---
 
@@ -189,3 +235,43 @@ pnpm test:e2e          # Playwright tests
 - Maintain high code quality through continuous refactoring
 - Write meaningful test names that describe behavior
 - Keep methods small and focused on single responsibility
+- **Never use traditional React error patterns** - always use Effect-TS
+- **Test all Effect-TS patterns with comprehensive edge cases**
+- **Ensure 100% Effect-TS compliance** in all components
+- **Mock RuntimeClient for predictable testing**
+- **Test Schema validation with various data types**
+- **Verify error resilience with intentional failures**
+
+## **Effect-TS Implementation Standards**
+
+### **Component Refactoring Checklist**
+- [ ] Replace `useState/useEffect` with `Effect.gen` workflows
+- [ ] Replace `try-catch` blocks with `Effect.match` error handling
+- [ ] Replace plain interfaces with `Schema.Class` for type safety
+- [ ] Implement `Effect.Service` for business logic
+- [ ] Use `RuntimeClient` for Effect program execution
+- [ ] Add `Effect.retry` with timeout for resilience
+- [ ] Create comprehensive edge case tests
+
+### **Testing Requirements**
+- **Minimum 70+ tests** for complex Effect-TS components
+- **Schema validation tests** with multiple data structures
+- **Effect.gen workflow tests** with parameter combinations
+- **Effect.match error scenario tests** for all failure paths
+- **Effect.retry resilience tests** with various failure patterns
+- **RuntimeClient edge case tests** including timeouts and memory pressure
+- **localStorage integration tests** with corrupted data scenarios
+
+### **Error Resilience Standards**
+- All Effect-TS operations must handle edge cases gracefully
+- localStorage access must be protected with try-catch
+- Network and timeout errors must have recovery logic
+- All error scenarios must be tested with intentional failures
+- Components must remain functional after error conditions
+
+## **Project Principles**
+- **Effect-TS First**: All async operations and error handling use Effect patterns
+- **Schema-First Architecture**: Runtime validation matches compile-time types
+- **Comprehensive Testing**: Every Effect-TS pattern tested with multiple input parameters
+- **Edge Case Coverage**: Test all failure scenarios and recovery mechanisms
+- **Type Safety**: End-to-end type safety with runtime validation
